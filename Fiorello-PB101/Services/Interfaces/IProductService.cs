@@ -14,5 +14,9 @@ namespace Fiorello_PB101.Services.Interfaces
         Task<int> GetCountAsync();
         Task CreateAsync(Product product);
         Task DeleteAsync(Product product);
+        Task UpdateAsync(Product product);  
+        Task SetMainImageAsync(ProductImage image);
+        Task<ProductImage> GetProductImageByIdAsync(int id);
+        Task DeleteProductImageAsync(ProductImage image);
     }
 }

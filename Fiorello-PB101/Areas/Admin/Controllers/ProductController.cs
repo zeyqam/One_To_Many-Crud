@@ -154,7 +154,120 @@ namespace Fiorello_PB101.Areas.Admin.Controllers
            await _productService.DeleteAsync(existProduct);
             return RedirectToAction(nameof(Index));
         }
-        
+        [HttpGet]
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id is null)
+            {
+                return BadRequest();
+            }
+            var existProduct = await _productService.GetProductByIdAsync((int)id);
+            if (existProduct is null)
+            {
+                return NotFound();
+            }
+            ViewBag.categories=await _categoryService.GetAllSelectedAsync();
+            ProductEditVM response = new()
+            {
+                Id = existProduct.Id,
+                Name = existProduct.Name,
+                Description = existProduct.Description,
+                CategoryId = existProduct.CategoryId,
+                Price = existProduct.Price.ToString(),
+                ExistingImages = existProduct.ProductImages.Select(m => new ProductImageVM
+                {
+                    Id=m.Id,
+                    Image = m.Name,
+                    IsMain = m.IsMain
+                }).ToList()
+            };
+
+            return View(response);
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit (ProductEditVM request)
+        {
+            ViewBag.categories = await _categoryService.GetAllSelectedAsync();
+            if (!ModelState.IsValid)
+            {
+                return View(request);
+            }
+
+            var existProduct = await _productService.GetProductByIdAsync(request.Id);
+            if (existProduct is null)
+            {
+                return NotFound();
+            }
+
+            if (request.Images != null && request.Images.Count > 0)
+            {
+                foreach (var item in request.Images)
+                {
+                    if (!item.CheckFileSize(500))
+                    {
+                        ModelState.AddModelError("Images", "Image size must be 500 kb");
+                        return View(request);
+                    }
+                    if (!item.CheckFileType("image/"))
+                    {
+                        ModelState.AddModelError("Images", "File type must be file type");
+                        return View(request);
+                    }
+                }
+            }
+
+            existProduct.Name = request.Name;
+            existProduct.Description = request.Description;
+            existProduct.CategoryId = request.CategoryId;
+            existProduct.Price = decimal.Parse(request.Price);
+
+            if (request.Images != null && request.Images.Count > 0)
+            {
+                
+
+                foreach (var item in request.Images)
+                {
+                    string fileName = $"{Guid.NewGuid()}-{item.FileName}";
+                    string path = _env.GenerateFilePath("img", fileName);
+                    await item.SaveFileLocalAsync(path);
+                    existProduct.ProductImages.Add(new ProductImage { Name = fileName });
+                }
+
+               
+            }
+
+            await _productService.UpdateAsync(existProduct);
+            return RedirectToAction(nameof(Index));
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetMainImage(int id)
+        {
+            var image = await _productService.GetProductImageByIdAsync(id);
+            if (image is null)
+            {
+                return NotFound();
+            }
+
+            await _productService.SetMainImageAsync(image);
+            return Ok();
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteImage(int id)
+        {
+            var image = await _productService.GetProductImageByIdAsync(id);
+            if (image is null)
+            {
+                return NotFound();
+            }
+
+            string path = _env.GenerateFilePath("img", image.Name);
+            path.DeleteFileFromLocal();
+            await _productService.DeleteProductImageAsync(image);
+            return Ok();
+        }
 
     }
 }

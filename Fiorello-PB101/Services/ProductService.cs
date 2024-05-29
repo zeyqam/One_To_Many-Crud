@@ -26,6 +26,12 @@ namespace Fiorello_PB101.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task DeleteProductImageAsync(ProductImage image)
+        {
+            _context.ProductImages.Remove(image);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<IEnumerable<Product>> GetAllAsync()
         {
             return await _context.Products .Include(m => m.Category)
@@ -77,11 +83,40 @@ namespace Fiorello_PB101.Services
                                                  .FirstOrDefaultAsync();
         }
 
+        public async Task<ProductImage> GetProductImageByIdAsync(int id)
+        {
+            return await _context.ProductImages.FindAsync(id);
+        }
+
         public async Task<IEnumerable<Product>> GetProductsAsync()
         {
             return await _context.Products.Include(m=>m.ProductImages).ToListAsync();
         }
 
-       
+        public async Task SetMainImageAsync(ProductImage image)
+        {
+            var product = await _context.Products
+        .Include(m => m.ProductImages)
+        .FirstOrDefaultAsync(m => m.ProductImages.Any(m => m.Id == image.Id));
+
+            if (product == null)
+            {
+                return;
+            }
+
+            foreach (var img in product.ProductImages)
+            {
+                img.IsMain = false;
+            }
+
+            image.IsMain = true;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(Product product)
+        {
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+        }
     }
 }
